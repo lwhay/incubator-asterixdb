@@ -16,31 +16,45 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.hyracks.dataflow.common.data.partition.range;
+
+package org.apache.hyracks.dataflow.std.parallel.base;
 
 import org.apache.hyracks.api.comm.IFrameTupleAccessor;
 import org.apache.hyracks.api.context.IHyracksTaskContext;
+import org.apache.hyracks.api.dataflow.state.IStateObject;
 import org.apache.hyracks.api.dataflow.value.IBinaryComparator;
 import org.apache.hyracks.api.dataflow.value.IBinaryComparatorFactory;
 import org.apache.hyracks.api.dataflow.value.ITuplePartitionComputer;
 import org.apache.hyracks.api.dataflow.value.ITuplePartitionComputerFactory;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
+import org.apache.hyracks.dataflow.common.data.partition.range.IRangeMap;
 
-public class FieldRangePartitionComputerFactory implements ITuplePartitionComputerFactory {
+/**
+ * @author michael
+ */
+public class FieldRangePartitionDelayComputerFactory implements ITuplePartitionComputerFactory {
+
     private static final long serialVersionUID = 1L;
     private final int[] rangeFields;
     private IRangeMap rangeMap;
     private IBinaryComparatorFactory[] comparatorFactories;
 
-    public FieldRangePartitionComputerFactory(int[] rangeFields, IBinaryComparatorFactory[] comparatorFactories,
-            IRangeMap rangeMap) {
+    public FieldRangePartitionDelayComputerFactory(int[] rangeFields, IBinaryComparatorFactory[] comparatorFactories) {
         this.rangeFields = rangeFields;
         this.comparatorFactories = comparatorFactories;
-        this.rangeMap = rangeMap;
     }
 
     @Override
-    public ITuplePartitionComputer createPartitioner(IHyracksTaskContext ctx, int partition) {
+    public ITuplePartitionComputer createPartitioner(IHyracksTaskContext ctx, int index) {
+
+        try {
+            IStateObject rangeState = ctx.getGlobalState(index);
+            rangeMap = ((ParallelRangeMapTaskState) rangeState).getRangeMap();
+        } catch (HyracksDataException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
         final IBinaryComparator[] comparators = new IBinaryComparator[comparatorFactories.length];
         for (int i = 0; i < comparatorFactories.length; ++i) {
             comparators[i] = comparatorFactories[i].createBinaryComparator();
@@ -48,7 +62,7 @@ public class FieldRangePartitionComputerFactory implements ITuplePartitionComput
         return new ITuplePartitionComputer() {
             @Override
             /**
-             * Determine the range partition.
+             * Determine the range partition. 
              */
             public int partition(IFrameTupleAccessor accessor, int tIndex, int nParts) throws HyracksDataException {
                 if (nParts == 1) {
@@ -99,4 +113,5 @@ public class FieldRangePartitionComputerFactory implements ITuplePartitionComput
 
         };
     }
+
 }

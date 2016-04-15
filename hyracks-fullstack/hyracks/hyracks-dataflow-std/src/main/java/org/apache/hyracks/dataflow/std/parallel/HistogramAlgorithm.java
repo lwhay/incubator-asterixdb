@@ -16,12 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.hyracks.api.dataflow.value;
 
-import java.io.Serializable;
+package org.apache.hyracks.dataflow.std.parallel;
 
-import org.apache.hyracks.api.context.IHyracksTaskContext;
-
-public interface ITuplePartitionComputerFactory extends Serializable {
-    public ITuplePartitionComputer createPartitioner(IHyracksTaskContext ctx, int partition);
+/**
+ * @author michael
+ */
+public enum HistogramAlgorithm {
+    ORDERED_HISTOGRAM, // For the local-sorted fields.
+    UNIFORM_HISTOGRAM, // For the equal-height histogram.
+    RANDOM_HISTOGRAM, // For the sample based rangeMap.
+    WAVELET_HISTOGRAM // For the wavelet histogram.
 }

@@ -87,6 +87,8 @@ public class Task implements IHyracksTaskContext, ICounterContext, Runnable {
 
     private IPartitionCollector[] collectors;
 
+    private final static Map<Integer, IStateObject> stateObj = new HashMap<Integer, IStateObject>();
+
     private IOperatorNodePushable operator;
 
     private final List<Exception> exceptions;
@@ -401,5 +403,15 @@ public class Task implements IHyracksTaskContext, ICounterContext, Runnable {
     @Override
     public Object getSharedObject() {
         return sharedObject;
+    }
+
+    @Override
+    public void setGlobalState(int partition, final IStateObject state) {
+        Task.stateObj.put(new Integer(partition), state);
+    }
+
+    @Override
+    public IStateObject getGlobalState(int partition) {
+        return Task.stateObj.get(new Integer(partition));
     }
 }

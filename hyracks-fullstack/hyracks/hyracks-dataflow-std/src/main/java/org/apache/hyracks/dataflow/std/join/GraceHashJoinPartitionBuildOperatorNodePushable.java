@@ -56,7 +56,7 @@ class GraceHashJoinPartitionBuildOperatorNodePushable extends
         this.numPartitions = numPartitions;
         accessor0 = new FrameTupleAccessor(inRecordDescriptor);
         appender = new FrameTupleAppender();
-        hpc = new FieldHashPartitionComputerFactory(keys, hashFunctionFactories).createPartitioner();
+        hpc = new FieldHashPartitionComputerFactory(keys, hashFunctionFactories).createPartitioner(ctx, -1);
         comparators = new IBinaryComparator[comparatorFactories.length];
         for (int i = 0; i < comparatorFactories.length; ++i) {
             comparators[i] = comparatorFactories[i].createBinaryComparator();

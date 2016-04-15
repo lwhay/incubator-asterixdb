@@ -16,12 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.hyracks.api.dataflow.value;
 
-import java.io.Serializable;
+package org.apache.hyracks.dataflow.std.parallel;
 
-import org.apache.hyracks.api.context.IHyracksTaskContext;
+/**
+ * @author michael
+ */
+public interface IStatisticEntity<E> {
+    public int getCount(E e);
 
-public interface ITuplePartitionComputerFactory extends Serializable {
-    public ITuplePartitionComputer createPartitioner(IHyracksTaskContext ctx, int partition);
+    public void clearCount(E e);
+
+    public void updateBy(E e, int ub);
+
+    public void grow(E e, boolean deeper, short limit);
 }

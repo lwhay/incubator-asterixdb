@@ -42,7 +42,6 @@ import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.api.job.IOperatorDescriptorRegistry;
 import org.apache.hyracks.api.job.JobId;
 import org.apache.hyracks.dataflow.common.comm.io.FrameTupleAccessor;
-import org.apache.hyracks.dataflow.std.util.FrameTuplePairComparator;
 import org.apache.hyracks.dataflow.common.comm.util.FrameUtils;
 import org.apache.hyracks.dataflow.common.data.partition.FieldHashPartitionComputerFactory;
 import org.apache.hyracks.dataflow.std.base.AbstractActivityNode;
@@ -52,6 +51,7 @@ import org.apache.hyracks.dataflow.std.base.AbstractUnaryInputSinkOperatorNodePu
 import org.apache.hyracks.dataflow.std.base.AbstractUnaryInputUnaryOutputOperatorNodePushable;
 import org.apache.hyracks.dataflow.std.structures.ISerializableTable;
 import org.apache.hyracks.dataflow.std.structures.SerializableHashTable;
+import org.apache.hyracks.dataflow.std.util.FrameTuplePairComparator;
 
 public class InMemoryHashJoinOperatorDescriptor extends AbstractOperatorDescriptor {
     private static final long serialVersionUID = 1L;
@@ -173,8 +173,8 @@ public class InMemoryHashJoinOperatorDescriptor extends AbstractOperatorDescript
                     nullWriters1[i] = nullWriterFactories1[i].createNullWriter();
                 }
             }
-            final IPredicateEvaluator predEvaluator = (predEvaluatorFactory == null ? null
-                    : predEvaluatorFactory.createPredicateEvaluator());
+            final IPredicateEvaluator predEvaluator = (predEvaluatorFactory == null ? null : predEvaluatorFactory
+                    .createPredicateEvaluator());
 
             IOperatorNodePushable op = new AbstractUnaryInputSinkOperatorNodePushable() {
                 private HashBuildTaskState state;
@@ -182,11 +182,11 @@ public class InMemoryHashJoinOperatorDescriptor extends AbstractOperatorDescript
                 @Override
                 public void open() throws HyracksDataException {
                     ITuplePartitionComputer hpc0 = new FieldHashPartitionComputerFactory(keys0, hashFunctionFactories)
-                            .createPartitioner();
+                            .createPartitioner(ctx, -1);
                     ITuplePartitionComputer hpc1 = new FieldHashPartitionComputerFactory(keys1, hashFunctionFactories)
-                            .createPartitioner();
-                    state = new HashBuildTaskState(ctx.getJobletContext().getJobId(),
-                            new TaskId(getActivityId(), partition));
+                            .createPartitioner(ctx, -1);
+                    state = new HashBuildTaskState(ctx.getJobletContext().getJobId(), new TaskId(getActivityId(),
+                            partition));
                     ISerializableTable table = new SerializableHashTable(tableSize, ctx);
                     state.joiner = new InMemoryHashJoin(ctx, tableSize, new FrameTupleAccessor(rd0), hpc0,
                             new FrameTupleAccessor(rd1), hpc1, new FrameTuplePairComparator(keys0, keys1, comparators),
@@ -229,8 +229,8 @@ public class InMemoryHashJoinOperatorDescriptor extends AbstractOperatorDescript
                 @Override
                 public void open() throws HyracksDataException {
                     writer.open();
-                    state = (HashBuildTaskState) ctx
-                            .getStateObject(new TaskId(new ActivityId(getOperatorId(), 0), partition));
+                    state = (HashBuildTaskState) ctx.getStateObject(new TaskId(new ActivityId(getOperatorId(), 0),
+                            partition));
                 }
 
                 @Override

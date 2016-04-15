@@ -16,12 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.hyracks.api.dataflow.value;
 
-import java.io.Serializable;
+package org.apache.hyracks.dataflow.std.parallel;
 
-import org.apache.hyracks.api.context.IHyracksTaskContext;
+import org.apache.hyracks.api.exceptions.HyracksDataException;
 
-public interface ITuplePartitionComputerFactory extends Serializable {
-    public ITuplePartitionComputer createPartitioner(IHyracksTaskContext ctx, int partition);
+/**
+ * @author michael
+ */
+public interface IDTHistogram<E> extends IHistogram<E> {
+
+    public E mediate(E left, E right) throws HyracksDataException;
 }

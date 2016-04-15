@@ -16,12 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.hyracks.api.dataflow.value;
 
-import java.io.Serializable;
+package org.apache.hyracks.dataflow.std.parallel.sampler;
 
-import org.apache.hyracks.api.context.IHyracksTaskContext;
+import java.util.Collection;
 
-public interface ITuplePartitionComputerFactory extends Serializable {
-    public ITuplePartitionComputer createPartitioner(IHyracksTaskContext ctx, int partition);
+public interface ISampler<T> {
+    public enum SAMPLE_ALGORITHM {
+        RANDOM,
+        BERNOULLI,
+        CHAIN,
+        RESERVOIR
+    }
+
+    public void sample(T t);
+
+    @SuppressWarnings("unchecked")
+    public void sample(T... t);
+
+    public Collection<T> getSamples();
+
+    public int getSize();
+
+    public void reset();
+
+    public boolean sampleNext();
+
+    public void remove();
 }

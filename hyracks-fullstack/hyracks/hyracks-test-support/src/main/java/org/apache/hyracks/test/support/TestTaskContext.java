@@ -155,4 +155,13 @@ public class TestTaskContext implements IHyracksTaskContext {
     @Override
     public void setSharedObject(Object sharedObject) {
     }
+
+    @Override
+    public void setGlobalState(int partition, final IStateObject state) {
+    }
+
+    @Override
+    public IStateObject getGlobalState(int partition) {
+        return null;
+    }
 }

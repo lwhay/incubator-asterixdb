@@ -33,7 +33,6 @@ import org.apache.hyracks.api.dataflow.value.ITuplePartitionComputer;
 import org.apache.hyracks.api.dataflow.value.RecordDescriptor;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.dataflow.common.comm.io.FrameTupleAccessor;
-import org.apache.hyracks.dataflow.std.util.FrameTuplePairComparator;
 import org.apache.hyracks.dataflow.common.comm.util.FrameUtils;
 import org.apache.hyracks.dataflow.common.data.partition.FieldHashPartitionComputerFactory;
 import org.apache.hyracks.dataflow.common.data.partition.RepartitionComputerFactory;
@@ -42,6 +41,7 @@ import org.apache.hyracks.dataflow.common.io.RunFileWriter;
 import org.apache.hyracks.dataflow.std.base.AbstractUnaryOutputSourceOperatorNodePushable;
 import org.apache.hyracks.dataflow.std.structures.ISerializableTable;
 import org.apache.hyracks.dataflow.std.structures.SerializableHashTable;
+import org.apache.hyracks.dataflow.std.util.FrameTuplePairComparator;
 
 class GraceHashJoinOperatorNodePushable extends AbstractUnaryOutputSourceOperatorNodePushable {
     private final IHyracksTaskContext ctx;
@@ -94,9 +94,9 @@ class GraceHashJoinOperatorNodePushable extends AbstractUnaryOutputSourceOperato
             comparators[i] = comparatorFactories[i].createBinaryComparator();
         }
         ITuplePartitionComputer hpcRep0 = new RepartitionComputerFactory(numPartitions,
-                new FieldHashPartitionComputerFactory(keys0, hashFunctionFactories)).createPartitioner();
+                new FieldHashPartitionComputerFactory(keys0, hashFunctionFactories)).createPartitioner(ctx, -1);
         ITuplePartitionComputer hpcRep1 = new RepartitionComputerFactory(numPartitions,
-                new FieldHashPartitionComputerFactory(keys1, hashFunctionFactories)).createPartitioner();
+                new FieldHashPartitionComputerFactory(keys1, hashFunctionFactories)).createPartitioner(ctx, -1);
 
         final INullWriter[] nullWriters1 = isLeftOuter ? new INullWriter[nullWriterFactories.length] : null;
         if (isLeftOuter) {
