@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.hyracks.dataflow.std.parallel.util;
 
 import org.apache.hyracks.api.exceptions.HyracksDataException;
@@ -96,9 +95,8 @@ public class HistogramUtils {
             byte b = (byte) ((((quantile) >> i * 7) & 0x7f) + 32);
             if (b < 0)
                 b = 0;
-            uByte[len - i/* + 1*/] = b;
+            uByte[len - i] = b;
         }
-        //uByte[0] = (byte) (len << 16 >> 24);
         uByte[0] = (byte) (len & 0xff);
         uStr.set(uByte, 0, len + 1);
         return uStr;
@@ -118,9 +116,8 @@ public class HistogramUtils {
                 System.arraycopy(bs, 0, uByte, len - i + 1, l);
                 len += (l - 1);
             } else
-                uByte[len - i/* + 1*/] = b;
+                uByte[len - i] = b;
         }
-        //uByte[0] = (byte) (len << 16 >> 24);
         uByte[0] = (byte) (len & 0xff);
         uStr.set(uByte, 0, len + 1);
         return uStr;

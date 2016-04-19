@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.hyracks.dataflow.std.parallel;
 
 import java.util.List;
@@ -28,6 +27,11 @@ import org.apache.hyracks.api.exceptions.HyracksDataException;
  * @author michael
  */
 public interface IHistogram<E> {
+    public enum HistogramType {
+        STREAMING_NUMERIC,
+        TERNARY_UTF8STRING,
+        UNSUPPORTED_DATATYPE
+    }
 
     public enum FieldType {
         SHORT,
@@ -45,6 +49,8 @@ public interface IHistogram<E> {
     public void merge(IHistogram<E> ba) throws HyracksDataException;
 
     public void addItem(E item) throws HyracksDataException;
+
+    public void appendItem(E item, int count) throws HyracksDataException;
 
     public void countItem(E item) throws HyracksDataException;
 

@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.hyracks.dataflow.std.parallel.histogram.structures;
 
 import java.util.ArrayList;
@@ -222,5 +221,11 @@ public class AbstractStreamingHistogram<E extends AbstractPointable> implements 
     public FieldType getType() {
         // TODO Auto-generated method stub
         return null;
+    }
+
+    @Override
+    public void appendItem(E item, int count) throws HyracksDataException {
+        // TODO Auto-generated method stub
+
     }
 }

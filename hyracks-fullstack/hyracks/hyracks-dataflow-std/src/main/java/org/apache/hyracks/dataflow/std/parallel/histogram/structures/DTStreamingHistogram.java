@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.hyracks.dataflow.std.parallel.histogram.structures;
 
 import java.util.ArrayList;
@@ -25,11 +24,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.PriorityQueue;
-import java.util.logging.Logger;
 import java.util.Random;
+import java.util.logging.Logger;
 
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.data.std.api.AbstractPointable;
+import org.apache.hyracks.data.std.primitive.DoublePointable;
 import org.apache.hyracks.dataflow.std.parallel.IDTHistogram;
 import org.apache.hyracks.dataflow.std.parallel.IHistogram;
 import org.apache.hyracks.dataflow.std.parallel.util.HistogramUtils;
@@ -39,6 +39,8 @@ import org.apache.hyracks.dataflow.std.parallel.util.HistogramUtils;
  */
 public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHistogram<E> {
     private static final Logger LOGGER = Logger.getLogger(DTStreamingHistogram.class.getName());
+
+    private boolean DEBUG = true;
 
     private boolean heapIncrement = false;
 
@@ -745,7 +747,12 @@ public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHis
     @Override
     public List<Entry<E, Integer>> generate(boolean isGlobal) throws HyracksDataException {
         List<Entry<E, Integer>> ret = new ArrayList<Entry<E, Integer>>();
-        if (adjustedBound) {
+        if (!isGlobal) {
+            for (int i = 0; i < nusedbins; i++) {
+                E pQuan = quantileToPointable(bins.get(i).x);
+                ret.add(new Quantile<E, Integer>(pQuan, bins.get(i).y));
+            }
+        } else if (adjustedBound) {
             for (int i = 0; i < nusedbins; i++) {
                 E pQuan = quantileToPointable(bins.get(i).x);
                 ret.add(new Quantile<E, Integer>(pQuan, bins.get(i).y));
@@ -854,6 +861,28 @@ public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHis
                     }
                     break;
                 }
+            }
+            if (DEBUG) {
+                for (int i = 0; i < bins.size(); i++) {
+                    String msg = "###############" + i + " out of " + nusedbins + "###############";
+                    msg += bins.get(i).x;
+                    msg += " <-> ";
+                    msg += bins.get(i).y;
+                    LOGGER.info(msg);
+                }
+                for (int i = 0; i < ret.size(); i++) {
+                    String msg = "************";
+                    AbstractPointable key = ret.get(i).getKey();
+                    if (key instanceof DoublePointable) {
+                        msg += ((DoublePointable) key).doubleValue();
+                        msg += " <-> ";
+                        msg += ret.get(i).getValue();
+                    }
+                    LOGGER.info(msg);
+                }
+            }
+            while (ret.size() >= nusedbins) {
+                ret.remove(ret.size() - 1);
             }
         }
         return ret;
@@ -1014,5 +1043,23 @@ public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHis
             ret.y = left.y;
         }
         return ret;
+    }
+
+    // Guarantee the feeding items are increasingly sorted by key.
+    @Override
+    public void appendItem(E item, int count) throws HyracksDataException {
+        double q = pointableToQuantile(item);
+        LOGGER.info("Merge sequences: " + q + " <=> " + count);
+        if (bins.get(nusedbins - 1).x == q)
+            bins.get(nusedbins - 1).y += count;
+        else {
+            Coord newBin = new Coord();
+            newBin.x = q;
+            newBin.y = count;
+            bins.add(newBin);
+            nusedbins++;
+            if (++nusedbins > nbins)
+                trim();
+        }
     }
 }

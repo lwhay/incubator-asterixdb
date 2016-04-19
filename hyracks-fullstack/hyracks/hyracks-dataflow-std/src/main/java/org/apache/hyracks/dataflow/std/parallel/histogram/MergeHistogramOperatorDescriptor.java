@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.hyracks.dataflow.std.parallel.histogram;
 
 import org.apache.hyracks.api.context.IHyracksTaskContext;
@@ -27,7 +26,6 @@ import org.apache.hyracks.api.dataflow.TaskId;
 import org.apache.hyracks.api.dataflow.value.IBinaryComparatorFactory;
 import org.apache.hyracks.api.dataflow.value.INormalizedKeyComputerFactory;
 import org.apache.hyracks.api.dataflow.value.IRecordDescriptorProvider;
-import org.apache.hyracks.api.dataflow.value.ISerializerDeserializer;
 import org.apache.hyracks.api.dataflow.value.RecordDescriptor;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.api.job.IOperatorDescriptorRegistry;
@@ -35,15 +33,11 @@ import org.apache.hyracks.dataflow.std.base.AbstractActivityNode;
 import org.apache.hyracks.dataflow.std.base.AbstractOperatorDescriptor;
 import org.apache.hyracks.dataflow.std.base.AbstractUnaryOutputSourceOperatorNodePushable;
 import org.apache.hyracks.dataflow.std.parallel.HistogramAlgorithm;
-import org.apache.hyracks.dataflow.std.sort.Algorithm;
-import org.apache.hyracks.dataflow.std.sort.FrameSorterMergeSort;
-import org.apache.hyracks.dataflow.std.sort.FrameSorterQuickSort;
-import org.apache.hyracks.dataflow.std.sort.IFrameSorter;
 
 /**
  * @author michael
  */
-public class MergeSampleOperatorDescriptor extends AbstractOperatorDescriptor {
+public class MergeHistogramOperatorDescriptor extends AbstractOperatorDescriptor {
     private static final long serialVersionUID = 1L;
 
     private final static int GLOBAL_MERGE_FACTOR = 2;
@@ -70,7 +64,7 @@ public class MergeSampleOperatorDescriptor extends AbstractOperatorDescriptor {
      * @param outputArity
      * @throws HyracksDataException
      */
-    public MergeSampleOperatorDescriptor(IOperatorDescriptorRegistry spec, int frameLimit, int[] sampleFields,
+    public MergeHistogramOperatorDescriptor(IOperatorDescriptorRegistry spec, int frameLimit, int[] sampleFields,
             RecordDescriptor inDesc, int outputLimit, INormalizedKeyComputerFactory firstKeyNormalizerFactory,
             IBinaryComparatorFactory[] compFactories, HistogramAlgorithm alg, boolean needMaterialization)
             throws HyracksDataException {
@@ -117,7 +111,7 @@ public class MergeSampleOperatorDescriptor extends AbstractOperatorDescriptor {
         public IOperatorNodePushable createPushRuntime(final IHyracksTaskContext ctx,
                 IRecordDescriptorProvider recordDescProvider, final int partition, final int nPartitions)
                 throws HyracksDataException {
-            return new MergeSampleOperatorNodePushable(ctx, new TaskId(getActivityId(), partition), sampleFields,
+            return new MergeHistogramOperatorNodePushable(ctx, new TaskId(getActivityId(), partition), sampleFields,
                     sampleBasis, frameLimit, recordDescProvider, outputLimit, inDesc, outDesc,
                     firstKeyNormalizerFactory, comparatorFactories, algorithm, partition, nPartitions);
         }

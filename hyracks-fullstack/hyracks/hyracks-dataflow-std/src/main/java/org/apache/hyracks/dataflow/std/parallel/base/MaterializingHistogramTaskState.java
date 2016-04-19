@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.hyracks.dataflow.std.parallel.base;
 
 import java.io.DataInput;
@@ -34,10 +33,10 @@ import org.apache.hyracks.dataflow.common.io.RunFileReader;
 import org.apache.hyracks.dataflow.common.io.RunFileWriter;
 import org.apache.hyracks.dataflow.std.base.AbstractStateObject;
 
-public class MaterializingSampleTaskState extends AbstractStateObject {
+public class MaterializingHistogramTaskState extends AbstractStateObject {
     private RunFileWriter out;
 
-    public MaterializingSampleTaskState(JobId jobId, Object taskId) {
+    public MaterializingHistogramTaskState(JobId jobId, Object taskId) {
         super(jobId, taskId);
     }
 
@@ -54,7 +53,7 @@ public class MaterializingSampleTaskState extends AbstractStateObject {
 
     public void open(IHyracksTaskContext context) throws HyracksDataException {
         FileReference file = context.getJobletContext().createManagedWorkspaceFile(
-                MaterializingSampleTaskState.class.getSimpleName());
+                MaterializingHistogramTaskState.class.getSimpleName());
         out = new RunFileWriter(file, context.getIOManager());
         out.open();
     }

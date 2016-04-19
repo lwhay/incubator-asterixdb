@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.hyracks.dataflow.std.parallel.histogram;
 
 import org.apache.hyracks.api.dataflow.value.IBinaryComparatorFactory;
@@ -27,7 +26,7 @@ import org.apache.hyracks.dataflow.std.parallel.HistogramAlgorithm;
 /**
  * @author michael
  */
-public class MaterializingSampleOperatorDescriptor extends AbstractSampleOperatorDescriptor {
+public class LocalHistogramOperatorDescriptor extends AbstractHistogramOperatorDescriptor {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -40,7 +39,7 @@ public class MaterializingSampleOperatorDescriptor extends AbstractSampleOperato
      * @param alg
      * @param outputArity
      */
-    public MaterializingSampleOperatorDescriptor(IOperatorDescriptorRegistry spec, int frameLimit, int[] sampleFields,
+    public LocalHistogramOperatorDescriptor(IOperatorDescriptorRegistry spec, int frameLimit, int[] sampleFields,
             int sampleBasis, RecordDescriptor rDesc, IBinaryComparatorFactory[] compFactories, HistogramAlgorithm alg,
             int outputArity) {
         super(spec, frameLimit, sampleFields, sampleBasis, rDesc, compFactories, alg, outputArity);
@@ -58,7 +57,7 @@ public class MaterializingSampleOperatorDescriptor extends AbstractSampleOperato
      * @param outputArity
      * @param outputMaterializationFlags
      */
-    public MaterializingSampleOperatorDescriptor(IOperatorDescriptorRegistry spec, int frameLimit, int[] sampleFields,
+    public LocalHistogramOperatorDescriptor(IOperatorDescriptorRegistry spec, int frameLimit, int[] sampleFields,
             int sampleBasis, RecordDescriptor rDesc, IBinaryComparatorFactory[] compFactories, HistogramAlgorithm alg,
             int outputArity, boolean[] outputMaterializationFlags) {
         super(spec, frameLimit, sampleFields, sampleBasis, rDesc, compFactories, alg, outputArity,

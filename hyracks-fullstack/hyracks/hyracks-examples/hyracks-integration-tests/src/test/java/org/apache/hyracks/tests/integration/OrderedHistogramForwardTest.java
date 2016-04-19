@@ -52,23 +52,20 @@ import org.apache.hyracks.dataflow.std.group.aggregators.IntSumFieldAggregatorFa
 import org.apache.hyracks.dataflow.std.group.aggregators.MultiFieldsAggregatorFactory;
 import org.apache.hyracks.dataflow.std.parallel.HistogramAlgorithm;
 import org.apache.hyracks.dataflow.std.parallel.base.FieldRangePartitionDelayComputerFactory;
-import org.apache.hyracks.dataflow.std.parallel.histogram.AbstractSampleOperatorDescriptor;
-import org.apache.hyracks.dataflow.std.parallel.histogram.MaterializingForwardOperatorDescriptor;
-import org.apache.hyracks.dataflow.std.parallel.histogram.MaterializingSampleOperatorDescriptor;
-import org.apache.hyracks.dataflow.std.parallel.histogram.MergeSampleOperatorDescriptor;
+import org.apache.hyracks.dataflow.std.parallel.histogram.AbstractHistogramOperatorDescriptor;
+import org.apache.hyracks.dataflow.std.parallel.histogram.ForwardOperatorDescriptor;
+import org.apache.hyracks.dataflow.std.parallel.histogram.LocalHistogramOperatorDescriptor;
+import org.apache.hyracks.dataflow.std.parallel.histogram.MergeHistogramOperatorDescriptor;
 import org.apache.hyracks.dataflow.std.sort.ExternalSortOperatorDescriptor;
 import org.junit.Test;
 
 /**
  * @author michael
  */
-public class SampleForwardTest extends AbstractIntegrationTest {
-    private static final boolean DEBUG = false;
+public class OrderedHistogramForwardTest extends AbstractIntegrationTest {
     private static final int balance_factor = 10;
-    private static final int outputArity = 1;
     private static final int rangeMergeArity = 1;
     private static final int outputFiles = 2;
-    private static final int outputRaws = 2;
     private static int[] sampleFields = new int[] { 2 };
     private static int[] normalFields = new int[] { 0 };
     private IBinaryComparatorFactory[] sampleCmpFactories = new IBinaryComparatorFactory[] { PointableBinaryComparatorFactory
@@ -102,7 +99,7 @@ public class SampleForwardTest extends AbstractIntegrationTest {
                         UTF8StringParserFactory.INSTANCE }, '|'), custDesc);
         PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, custScanner, NC1_ID, NC2_ID);
 
-        AbstractSampleOperatorDescriptor materSampleCust = new MaterializingSampleOperatorDescriptor(spec, 4,
+        AbstractHistogramOperatorDescriptor materSampleCust = new LocalHistogramOperatorDescriptor(spec, 4,
                 sampleFields, 2 * balance_factor, custDesc, sampleCmpFactories, null, 1, new boolean[] { true });
         PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, materSampleCust, NC1_ID, NC2_ID);
         spec.connect(new OneToOneConnectorDescriptor(spec), custScanner, 0, materSampleCust, 0);
@@ -122,7 +119,7 @@ public class SampleForwardTest extends AbstractIntegrationTest {
         ITuplePartitionComputerFactory tpcf = new FieldRangePartitionComputerFactory(normalFields, sampleCmpFactories,
                 rangeMap);
 
-        IOperatorDescriptor mergeSampleCust = new MergeSampleOperatorDescriptor(spec, 4, normalFields, outputSamp, 4,
+        IOperatorDescriptor mergeSampleCust = new MergeHistogramOperatorDescriptor(spec, 4, normalFields, outputSamp, 4,
                 sampleKeyFactories, sampleCmpFactories, HistogramAlgorithm.ORDERED_HISTOGRAM, false);
         PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, mergeSampleCust, NC1_ID, NC2_ID);
         spec.connect(new MToNPartitioningMergingConnectorDescriptor(spec, tpcf, normalFields, sampleCmpFactories,
@@ -132,7 +129,7 @@ public class SampleForwardTest extends AbstractIntegrationTest {
                 sampleCmpFactories);
 
         RecordDescriptor outputRec = custDesc;
-        IOperatorDescriptor forward = new MaterializingForwardOperatorDescriptor(spec, 4, normalFields, outputSamp,
+        IOperatorDescriptor forward = new ForwardOperatorDescriptor(spec, 4, normalFields, outputSamp,
                 outputRec, sampleCmpFactories);
         PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, forward, NC1_ID, NC2_ID);
         spec.connect(new MToNReplicatingConnectorDescriptor(spec), mergeSampleCust, 0, forward, 0);

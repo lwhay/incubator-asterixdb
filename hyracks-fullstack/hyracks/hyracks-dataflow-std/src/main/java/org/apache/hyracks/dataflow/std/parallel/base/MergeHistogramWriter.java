@@ -16,19 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.hyracks.dataflow.std.parallel.base;
+
+import java.nio.ByteBuffer;
 
 import org.apache.hyracks.api.comm.IFrameWriter;
 import org.apache.hyracks.api.context.IHyracksTaskContext;
 import org.apache.hyracks.api.dataflow.value.IBinaryComparator;
 import org.apache.hyracks.api.dataflow.value.RecordDescriptor;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
+import org.apache.hyracks.data.std.api.AbstractPointable;
+import org.apache.hyracks.dataflow.std.parallel.histogram.structures.DTStreamingHistogram;
 
 /**
  * @author michael
  */
-public class DefaultSamplingWriter extends AbstractSamplingWriter {
+public class MergeHistogramWriter extends QuantileHistogramWriter {
 
     /**
      * @param ctx
@@ -38,13 +41,13 @@ public class DefaultSamplingWriter extends AbstractSamplingWriter {
      * @param inRecordDesc
      * @param outRecordDesc
      * @param writer
-     * @param outputPartial
+     * @param local
      * @throws HyracksDataException
      */
-    public DefaultSamplingWriter(IHyracksTaskContext ctx, int[] sampleFields, int sampleBasis,
+    public MergeHistogramWriter(IHyracksTaskContext ctx, int[] sampleFields, int sampleBasis,
             IBinaryComparator[] comparators, RecordDescriptor inRecordDesc, RecordDescriptor outRecordDesc,
-            IFrameWriter writer, boolean outputPartial) throws HyracksDataException {
-        super(ctx, sampleFields, sampleBasis, comparators, inRecordDesc, outRecordDesc, writer, outputPartial);
+            IFrameWriter writer, boolean local) throws HyracksDataException {
+        super(ctx, sampleFields, sampleBasis, comparators, inRecordDesc, outRecordDesc, writer, local);
         // TODO Auto-generated constructor stub
     }
 
@@ -58,7 +61,7 @@ public class DefaultSamplingWriter extends AbstractSamplingWriter {
      * @param writer
      * @throws HyracksDataException
      */
-    public DefaultSamplingWriter(IHyracksTaskContext ctx, int[] sampleFields, int sampleBasis,
+    public MergeHistogramWriter(IHyracksTaskContext ctx, int[] sampleFields, int sampleBasis,
             IBinaryComparator[] comparators, RecordDescriptor inRecordDesc, RecordDescriptor outRecordDesc,
             IFrameWriter writer) throws HyracksDataException {
         super(ctx, sampleFields, sampleBasis, comparators, inRecordDesc, outRecordDesc, writer);
@@ -66,11 +69,32 @@ public class DefaultSamplingWriter extends AbstractSamplingWriter {
     }
 
     @Override
-    public void close() throws HyracksDataException {
-        if (!isFailed && !isFirst) {
-            assert (copyFrameAccessor.getTupleCount() > 0);
-            writeOutput(copyFrameAccessor, copyFrameAccessor.getTupleCount() - 1);
+    public void open() throws HyracksDataException {
+        super.open();
+        switch (type) {
+            case STREAMING_NUMERIC:
+                ((DTStreamingHistogram<AbstractPointable>) histogram).allocate(sampleBasis, DEFAULT_ELASTIC, false);
+                break;
+            case TERNARY_UTF8STRING:
+                break;
+            default:
+                break;
         }
-        super.close();
+    }
+
+    @Override
+    public void nextFrame(ByteBuffer buffer) throws HyracksDataException {
+        inFrameAccessor.reset(buffer);
+        int nTuples = inFrameAccessor.getTupleCount();
+        for (int i = 0; i < nTuples; i++) {
+            tRef.reset(inFrameAccessor, i);
+            // Currently, we support the one-dimensional histogram.
+            // The numeric histogram can be supported by concatenating the homogeneous fields.
+            histogram.appendItem(
+                    (AbstractPointable) getSampledField(tRef.getFieldData(sampleFields[0]),
+                            tRef.getFieldStart(sampleFields[0])),
+                    getSampledCount(tRef.getFieldData(tRef.getFieldCount() - 1),
+                            tRef.getFieldStart(tRef.getFieldCount() - 1)));
+        }
     }
 }

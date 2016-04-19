@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.hyracks.dataflow.std.parallel.histogram;
 
 import java.nio.ByteBuffer;
@@ -33,7 +32,7 @@ import org.apache.hyracks.dataflow.std.base.AbstractUnaryInputUnaryOutputOperato
 /**
  * @author michael
  */
-public class SampleReaderOperatorNodePushable extends AbstractUnaryInputUnaryOutputOperatorNodePushable {
+public class HistogramReaderOperatorNodePushable extends AbstractUnaryInputUnaryOutputOperatorNodePushable {
 
     private final IHyracksTaskContext ctx;
     private final int[] sampleFields;
@@ -48,7 +47,7 @@ public class SampleReaderOperatorNodePushable extends AbstractUnaryInputUnaryOut
     /**
      * 
      */
-    public SampleReaderOperatorNodePushable(final IHyracksTaskContext ctx, int[] sampleFields, int sampleBasis,
+    public HistogramReaderOperatorNodePushable(final IHyracksTaskContext ctx, int[] sampleFields, int sampleBasis,
             int frameLimit, IRecordDescriptorProvider recordDescProvider, int outputLimit, RecordDescriptor inDesc,
             INormalizedKeyComputerFactory firstKeyNormalizerFactory, IBinaryComparatorFactory[] comparatorFactories,
             final int partition, final int nPartitions) {

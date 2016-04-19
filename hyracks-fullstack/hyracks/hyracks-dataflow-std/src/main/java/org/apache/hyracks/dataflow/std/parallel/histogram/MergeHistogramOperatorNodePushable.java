@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.hyracks.dataflow.std.parallel.histogram;
 
 import java.nio.ByteBuffer;
@@ -29,24 +28,24 @@ import org.apache.hyracks.api.dataflow.value.IRecordDescriptorProvider;
 import org.apache.hyracks.api.dataflow.value.RecordDescriptor;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.dataflow.std.base.AbstractUnaryInputUnaryOutputOperatorNodePushable;
-import org.apache.hyracks.dataflow.std.parallel.HistogramAlgorithm;
-import org.apache.hyracks.dataflow.std.parallel.base.AbstractSamplingWriter;
-import org.apache.hyracks.dataflow.std.parallel.base.MergeOrderedSampleWriter;
-import org.apache.hyracks.dataflow.std.sort.Algorithm;
-import org.apache.hyracks.dataflow.std.sort.FrameSorterMergeSort;
-import org.apache.hyracks.dataflow.std.sort.FrameSorterQuickSort;
-import org.apache.hyracks.dataflow.std.sort.IFrameSorter;
 import org.apache.hyracks.dataflow.std.buffermanager.EnumFreeSlotPolicy;
 import org.apache.hyracks.dataflow.std.buffermanager.FrameFreeSlotPolicyFactory;
 import org.apache.hyracks.dataflow.std.buffermanager.IFrameBufferManager;
 import org.apache.hyracks.dataflow.std.buffermanager.IFrameFreeSlotPolicy;
 import org.apache.hyracks.dataflow.std.buffermanager.VariableFrameMemoryManager;
 import org.apache.hyracks.dataflow.std.buffermanager.VariableFramePool;
+import org.apache.hyracks.dataflow.std.parallel.HistogramAlgorithm;
+import org.apache.hyracks.dataflow.std.parallel.base.AbstractHistogramWriter;
+import org.apache.hyracks.dataflow.std.parallel.base.MergeHistogramWriter;
+import org.apache.hyracks.dataflow.std.parallel.base.MergeOrderedHistogramWriter;
+import org.apache.hyracks.dataflow.std.sort.FrameSorterMergeSort;
+import org.apache.hyracks.dataflow.std.sort.FrameSorterQuickSort;
+import org.apache.hyracks.dataflow.std.sort.IFrameSorter;
 
 /**
  * @author michael
  */
-public class MergeSampleOperatorNodePushable extends AbstractUnaryInputUnaryOutputOperatorNodePushable {
+public class MergeHistogramOperatorNodePushable extends AbstractUnaryInputUnaryOutputOperatorNodePushable {
     private final IHyracksTaskContext ctx;
     private final EnumFreeSlotPolicy policy = EnumFreeSlotPolicy.BIGGEST_FIT;
     private final HistogramAlgorithm sortAlg = HistogramAlgorithm.ORDERED_HISTOGRAM;
@@ -61,14 +60,14 @@ public class MergeSampleOperatorNodePushable extends AbstractUnaryInputUnaryOutp
     private final RecordDescriptor outDesc;
     private final IBinaryComparatorFactory[] comparatorFactories;
     private final INormalizedKeyComputerFactory firstKeyNormalizerFactory;
-    private AbstractSamplingWriter sw;
+    private AbstractHistogramWriter sw;
 
     /*private MaterializingSampleTaskState state;*/
 
     /**
      * @throws HyracksDataException
      */
-    public MergeSampleOperatorNodePushable(final IHyracksTaskContext ctx, Object stateId, int[] sampleFields,
+    public MergeHistogramOperatorNodePushable(final IHyracksTaskContext ctx, Object stateId, int[] sampleFields,
             int sampleBasis, int frameLimit, IRecordDescriptorProvider recordDescProvider, int outputLimit,
             RecordDescriptor inDesc, RecordDescriptor outDesc, INormalizedKeyComputerFactory firstKeyNormalizerFactory,
             IBinaryComparatorFactory[] comparatorFactories, HistogramAlgorithm alg, final int partition,
@@ -118,13 +117,17 @@ public class MergeSampleOperatorNodePushable extends AbstractUnaryInputUnaryOutp
         /*writer.open();*/
         switch (algorithm) {
             case ORDERED_HISTOGRAM:
-                sw = new MergeOrderedSampleWriter(ctx, sampleFields, sampleBasis, comparators, inDesc, outDesc, writer);
+                sw = new MergeOrderedHistogramWriter(ctx, sampleFields, sampleBasis, comparators, inDesc, outDesc,
+                        writer);
                 sw.open();
                 /*state = new MaterializingSampleTaskState(ctx.getJobletContext().getJobId(), stateId);
                 state.open(ctx);*/
                 break;
 
             case UNIFORM_HISTOGRAM:
+                sw = new MergeHistogramWriter(ctx, sampleFields, sampleBasis, comparators, inDesc, outDesc, writer,
+                        false);
+                sw.open();
             case RANDOM_HISTOGRAM:
             case WAVELET_HISTOGRAM:
                 break;

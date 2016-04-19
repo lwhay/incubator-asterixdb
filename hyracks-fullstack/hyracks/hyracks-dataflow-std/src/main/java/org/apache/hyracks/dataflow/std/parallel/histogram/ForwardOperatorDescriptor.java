@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.hyracks.dataflow.std.parallel.histogram;
 
 import java.nio.ByteBuffer;
@@ -36,12 +35,12 @@ import org.apache.hyracks.dataflow.std.base.AbstractActivityNode;
 import org.apache.hyracks.dataflow.std.base.AbstractOperatorDescriptor;
 import org.apache.hyracks.dataflow.std.base.AbstractUnaryInputUnaryOutputOperatorNodePushable;
 import org.apache.hyracks.dataflow.std.base.AbstractUnaryOutputSourceOperatorNodePushable;
-import org.apache.hyracks.dataflow.std.parallel.base.MaterializingSampleTaskState;
+import org.apache.hyracks.dataflow.std.parallel.base.MaterializingHistogramTaskState;
 
 /**
  * @author michael
  */
-public class MaterializingForwardOperatorDescriptor extends AbstractOperatorDescriptor {
+public class ForwardOperatorDescriptor extends AbstractOperatorDescriptor {
 
     private static final long serialVersionUID = 1L;
 
@@ -56,7 +55,7 @@ public class MaterializingForwardOperatorDescriptor extends AbstractOperatorDesc
      * @param inputArity
      * @param outputArity
      */
-    public MaterializingForwardOperatorDescriptor(IOperatorDescriptorRegistry spec, int frameLimit, int[] sampleFields,
+    public ForwardOperatorDescriptor(IOperatorDescriptorRegistry spec, int frameLimit, int[] sampleFields,
             RecordDescriptor inSampleDesc, RecordDescriptor inDataDesc, IBinaryComparatorFactory[] compFactories) {
         super(spec, 2, 1);
         this.sampleDesc = inSampleDesc;
@@ -107,11 +106,11 @@ public class MaterializingForwardOperatorDescriptor extends AbstractOperatorDesc
         public IOperatorNodePushable createPushRuntime(final IHyracksTaskContext ctx,
                 IRecordDescriptorProvider recordDescProvider, final int partition, int nPartitions) {
             return new AbstractUnaryInputUnaryOutputOperatorNodePushable() {
-                private MaterializingSampleTaskState dataState;
+                private MaterializingHistogramTaskState dataState;
 
                 @Override
                 public void open() throws HyracksDataException {
-                    dataState = new MaterializingSampleTaskState(ctx.getJobletContext().getJobId(), new TaskId(
+                    dataState = new MaterializingHistogramTaskState(ctx.getJobletContext().getJobId(), new TaskId(
                             getActivityId(), partition));
                     dataState.open(ctx);
                 }
@@ -150,14 +149,14 @@ public class MaterializingForwardOperatorDescriptor extends AbstractOperatorDesc
             return new AbstractUnaryOutputSourceOperatorNodePushable() {
                 @Override
                 public void initialize() throws HyracksDataException {
-                    MaterializingSampleTaskState state = (MaterializingSampleTaskState) ctx.getStateObject(new TaskId(
+                    MaterializingHistogramTaskState state = (MaterializingHistogramTaskState) ctx.getStateObject(new TaskId(
                             new ActivityId(getOperatorId(), MATER_FORWARD_ACTIVITY_ID), partition));
                     state.writeOut(writer, new VSizeFrame(ctx));
                 }
 
                 @Override
                 public void deinitialize() throws HyracksDataException {
-                    MaterializingSampleTaskState state = (MaterializingSampleTaskState) ctx.getStateObject(new TaskId(
+                    MaterializingHistogramTaskState state = (MaterializingHistogramTaskState) ctx.getStateObject(new TaskId(
                             new ActivityId(getOperatorId(), MATER_FORWARD_ACTIVITY_ID), partition));
                     state.deleteFile();
                 }

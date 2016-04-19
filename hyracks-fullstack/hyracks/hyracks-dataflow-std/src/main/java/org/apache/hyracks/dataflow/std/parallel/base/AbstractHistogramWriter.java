@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.hyracks.dataflow.std.parallel.base;
 
 import java.nio.ByteBuffer;
@@ -42,33 +41,32 @@ import org.apache.hyracks.dataflow.std.group.aggregators.CountFieldAggregatorFac
 /**
  * @author michael
  */
-public abstract class AbstractSamplingWriter implements IFrameWriter {
-    private static final Logger LOGGER = Logger.getLogger(AbstractSamplingWriter.class.getName());
-    //        private final IHyracksTaskContext ctx;
-    //    private final SampleAlgorithm alg = SampleAlgorithm.ORDERED_SAMPLE;
+public abstract class AbstractHistogramWriter implements IFrameWriter {
+    private static final Logger LOGGER = Logger.getLogger(AbstractHistogramWriter.class.getName());
     protected final FrameTupleAppenderWrapper appenderWrapper;
-    protected boolean outputPartial = false;
+    // For orderedHistogram, partially output; otherwise, keep big-size in local for sake of precision.
+    protected boolean partialOrLocal = false;
 
     protected boolean isFailed = false;
     protected final int[] sampleFields;
     protected int sampleBasis;
     protected final IBinaryComparator[] comparators;
     protected final IFrame copyFrame;
-    protected final FrameTupleAccessor inFrameAccessor;
-    protected final FrameTupleAccessor copyFrameAccessor;
+    protected final IFrameTupleAccessor inFrameAccessor;
+    protected final IFrameTupleAccessor copyFrameAccessor;
     protected IFieldAggregateDescriptor aggregator;
     protected AggregateState aggregateState;
     protected final ArrayTupleBuilder tupleBuilder;
     protected boolean isFirst;
 
-    public AbstractSamplingWriter(IHyracksTaskContext ctx, int[] sampleFields, int sampleBasis,
+    public AbstractHistogramWriter(IHyracksTaskContext ctx, int[] sampleFields, int sampleBasis,
             IBinaryComparator[] comparators, RecordDescriptor inRecordDesc, RecordDescriptor outRecordDesc,
             IFrameWriter writer, boolean outputPartial) throws HyracksDataException {
         this(ctx, sampleFields, sampleBasis, comparators, inRecordDesc, outRecordDesc, writer);
-        this.outputPartial = outputPartial;
+        this.partialOrLocal = outputPartial;
     }
 
-    public AbstractSamplingWriter(IHyracksTaskContext ctx, int[] sampleFields, int sampleBasis,
+    public AbstractHistogramWriter(IHyracksTaskContext ctx, int[] sampleFields, int sampleBasis,
             IBinaryComparator[] comparators, RecordDescriptor inRecordDesc, RecordDescriptor outRecordDesc,
             IFrameWriter writer) throws HyracksDataException {
         //                this.ctx = ctx;
@@ -86,7 +84,6 @@ public abstract class AbstractSamplingWriter implements IFrameWriter {
         FrameTupleAppender appender = new FrameTupleAppender();
         appender.reset(outFrame, true);
         appenderWrapper = new FrameTupleAppenderWrapper(appender, writer);
-
         tupleBuilder = new ArrayTupleBuilder(outRecordDesc.getFields().length);
     }
 
@@ -100,8 +97,6 @@ public abstract class AbstractSamplingWriter implements IFrameWriter {
     public void nextFrame(ByteBuffer buffer) throws HyracksDataException {
         inFrameAccessor.reset(buffer);
         int nTuples = inFrameAccessor.getTupleCount();
-        /*switch (alg) {
-            case ORDERED_SAMPLE: {*/
         for (int i = 0; i < nTuples; i++) {
             if (isFirst) {
                 tupleBuilder.reset();
@@ -127,21 +122,13 @@ public abstract class AbstractSamplingWriter implements IFrameWriter {
         copyFrame.ensureFrameSize(buffer.capacity());
         FrameUtils.copyAndFlip(buffer, copyFrame.getBuffer());
         copyFrameAccessor.reset(copyFrame.getBuffer());
-        /*break;
-        }
-        case RANDOM_SAMPLE:
-        case UNIFORM_SAMPLE:
-        case WAVELET_SAMPLE:
-        default:
-        break;
-        }*/
     }
 
     protected boolean writeFieldsOutput(final IFrameTupleAccessor lastTupleAccessor, int lastTupleIndex)
             throws HyracksDataException {
         int tupleOffset = lastTupleAccessor.getTupleStartOffset(lastTupleIndex);
 
-        if (outputPartial) {
+        if (partialOrLocal) {
             int fieldOffset = lastTupleAccessor.getFieldStartOffset(lastTupleIndex, sampleFields.length);
             aggregator.outputPartialResult(tupleBuilder.getDataOutput(), lastTupleAccessor.getBuffer().array(),
                     tupleOffset + fieldOffset + lastTupleAccessor.getFieldSlotsLength(), aggregateState);

@@ -16,12 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.hyracks.dataflow.std.parallel.histogram;
 
 import java.nio.ByteBuffer;
 
-import org.apache.hyracks.api.comm.IFrame;
 import org.apache.hyracks.api.comm.IFrameWriter;
 import org.apache.hyracks.api.comm.VSizeFrame;
 import org.apache.hyracks.api.context.IHyracksTaskContext;
@@ -29,23 +27,20 @@ import org.apache.hyracks.api.dataflow.value.IBinaryComparator;
 import org.apache.hyracks.api.dataflow.value.IBinaryComparatorFactory;
 import org.apache.hyracks.api.dataflow.value.RecordDescriptor;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
-import org.apache.hyracks.api.io.FileReference;
 import org.apache.hyracks.dataflow.common.comm.util.FrameUtils;
-import org.apache.hyracks.dataflow.common.io.RunFileReader;
-import org.apache.hyracks.dataflow.common.io.RunFileWriter;
 import org.apache.hyracks.dataflow.std.base.AbstractUnaryInputOperatorNodePushable;
 import org.apache.hyracks.dataflow.std.parallel.HistogramAlgorithm;
-import org.apache.hyracks.dataflow.std.parallel.base.AbstractSamplingWriter;
-import org.apache.hyracks.dataflow.std.parallel.base.MaterializingSampleTaskState;
-import org.apache.hyracks.dataflow.std.parallel.base.OrderedSamplingWriter;
-import org.apache.hyracks.dataflow.std.parallel.base.QuantileSamplingWriter;
+import org.apache.hyracks.dataflow.std.parallel.base.AbstractHistogramWriter;
+import org.apache.hyracks.dataflow.std.parallel.base.MaterializingHistogramTaskState;
+import org.apache.hyracks.dataflow.std.parallel.base.OrderedHistogramWriter;
+import org.apache.hyracks.dataflow.std.parallel.base.QuantileHistogramWriter;
 
 /**
  * @author michael
  */
-public class MaterializingSampleOperatorNodePushable extends AbstractUnaryInputOperatorNodePushable {
+public class LocalHistogramOperatorNodePushable extends AbstractUnaryInputOperatorNodePushable {
 
-    private AbstractSamplingWriter sw;
+    private AbstractHistogramWriter sw;
     //    private RunFileWriter swriter;
     private final IHyracksTaskContext ctx;
     private final int[] sampleFields;
@@ -59,10 +54,10 @@ public class MaterializingSampleOperatorNodePushable extends AbstractUnaryInputO
     private final int nNonMaterialization;
     private final Object stateId;
 
-    private MaterializingSampleTaskState state;
+    private MaterializingHistogramTaskState state;
     private final IFrameWriter[] writers;
 
-    public MaterializingSampleOperatorNodePushable(IHyracksTaskContext ctx, Object stateId, int[] sampleFields,
+    public LocalHistogramOperatorNodePushable(IHyracksTaskContext ctx, Object stateId, int[] sampleFields,
             int sampleBasis, IBinaryComparatorFactory[] comparatorFactories, HistogramAlgorithm alg,
             RecordDescriptor inDesc, RecordDescriptor outDesc, int nNonMaterialization,
             boolean requiresMaterialization, int partition) {
@@ -89,7 +84,7 @@ public class MaterializingSampleOperatorNodePushable extends AbstractUnaryInputO
         }
         // extract rangePartition and dynamically promote the partition param, get the RangeConnector and change the rangeMap.
         if (requiresMaterialization) {
-            state = new MaterializingSampleTaskState(ctx.getJobletContext().getJobId(), stateId);
+            state = new MaterializingHistogramTaskState(ctx.getJobletContext().getJobId(), stateId);
             state.open(ctx);
         }
         for (int i = 0; i < nNonMaterialization; i++) {
@@ -99,13 +94,16 @@ public class MaterializingSampleOperatorNodePushable extends AbstractUnaryInputO
         // Here for single input sampler only and will be merged for multiway sampling in the merge part.
         switch (alg) {
             case ORDERED_HISTOGRAM:
-                sw = new OrderedSamplingWriter(ctx, sampleFields, sampleBasis, comparators, inDesc, outDesc,
+                //partialOrLocal: false denotes output in batch.
+                sw = new OrderedHistogramWriter(ctx, sampleFields, sampleBasis, comparators, inDesc, outDesc,
                         writers[0], false);
                 break;
-            case UNIFORM_HISTOGRAM:
-                sw = new QuantileSamplingWriter(ctx, sampleFields, sampleBasis, comparators, inDesc, outDesc,
-                        writers[0], false);
+            case UNIFORM_HISTOGRAM: {
+                //partialOrLocal: true denotes the local big-size generation.
+                sw = new QuantileHistogramWriter(ctx, sampleFields, sampleBasis, comparators, inDesc, outDesc,
+                        writers[0], true);
                 break;
+            }
         }
         sw.open();
     }

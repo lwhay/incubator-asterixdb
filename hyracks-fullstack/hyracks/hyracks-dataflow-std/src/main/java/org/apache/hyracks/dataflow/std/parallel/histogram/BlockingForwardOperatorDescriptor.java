@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.hyracks.dataflow.std.parallel.histogram;
 
 import java.nio.ByteBuffer;
@@ -35,11 +34,18 @@ import org.apache.hyracks.api.job.IOperatorDescriptorRegistry;
 import org.apache.hyracks.dataflow.std.base.AbstractActivityNode;
 import org.apache.hyracks.dataflow.std.base.AbstractOperatorDescriptor;
 import org.apache.hyracks.dataflow.std.base.AbstractUnaryInputUnaryOutputOperatorNodePushable;
-import org.apache.hyracks.dataflow.std.parallel.base.MaterializingSampleTaskState;
+import org.apache.hyracks.dataflow.std.parallel.base.MaterializingHistogramTaskState;
 
 /**
  * @author michael
  */
+
+/**
+ * Depends on the locally pre-ordered fields.
+ *
+ * @deprecated Use ForwardOperatorDescriptor instead.
+ */
+@Deprecated
 public class BlockingForwardOperatorDescriptor extends AbstractOperatorDescriptor {
 
     private static final long serialVersionUID = 1L;
@@ -97,11 +103,11 @@ public class BlockingForwardOperatorDescriptor extends AbstractOperatorDescripto
         public IOperatorNodePushable createPushRuntime(final IHyracksTaskContext ctx,
                 IRecordDescriptorProvider recordDescProvider, final int partition, int nPartitions) {
             return new AbstractUnaryInputUnaryOutputOperatorNodePushable() {
-                private MaterializingSampleTaskState dataState;
+                private MaterializingHistogramTaskState dataState;
 
                 @Override
                 public void open() throws HyracksDataException {
-                    dataState = new MaterializingSampleTaskState(ctx.getJobletContext().getJobId(), new TaskId(
+                    dataState = new MaterializingHistogramTaskState(ctx.getJobletContext().getJobId(), new TaskId(
                             getActivityId(), partition));
                     dataState.open(ctx);
                 }

@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.hyracks.dataflow.std.parallel.histogram;
+
+import java.util.logging.Logger;
 
 import org.apache.hyracks.api.comm.VSizeFrame;
 import org.apache.hyracks.api.context.IHyracksTaskContext;
@@ -36,7 +37,7 @@ import org.apache.hyracks.dataflow.std.base.AbstractActivityNode;
 import org.apache.hyracks.dataflow.std.base.AbstractOperatorDescriptor;
 import org.apache.hyracks.dataflow.std.base.AbstractUnaryOutputSourceOperatorNodePushable;
 import org.apache.hyracks.dataflow.std.parallel.HistogramAlgorithm;
-import org.apache.hyracks.dataflow.std.parallel.base.MaterializingSampleTaskState;
+import org.apache.hyracks.dataflow.std.parallel.base.MaterializingHistogramTaskState;
 
 /**
  * @author michael
@@ -44,13 +45,13 @@ import org.apache.hyracks.dataflow.std.parallel.base.MaterializingSampleTaskStat
  *            materialization for both the sample and the input dataset, the merge part of the sampler is given in the following
  *            AbstractSampleMergeOperatorDescriptor after a MToOneExchange.
  */
-public abstract class AbstractSampleOperatorDescriptor extends AbstractOperatorDescriptor {
+public abstract class AbstractHistogramOperatorDescriptor extends AbstractOperatorDescriptor {
 
-    //    private static final Logger LOGGER = Logger.getLogger(AbstractSampleOperatorDescriptor.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(AbstractHistogramOperatorDescriptor.class.getName());
 
     private static final long serialVersionUID = 1L;
 
-    private final static int LOCAL_SAMPLING_FACTOR = 2;
+    private final static int LOCAL_SAMPLING_FACTOR = 1;
 
     private final static int MATER_SAMPLER_ACTIVITY_ID = 0;
     private final static int MATER_READER_ACTIVITY_ID = 1;
@@ -69,14 +70,14 @@ public abstract class AbstractSampleOperatorDescriptor extends AbstractOperatorD
     private RecordDescriptor outDesc;
     private RecordDescriptor inDesc;
 
-    public AbstractSampleOperatorDescriptor(IOperatorDescriptorRegistry spec, int frameLimit, int[] sampleFields,
+    public AbstractHistogramOperatorDescriptor(IOperatorDescriptorRegistry spec, int frameLimit, int[] sampleFields,
             int sampleBasis, RecordDescriptor rDesc, IBinaryComparatorFactory[] compFactories, HistogramAlgorithm alg,
             int outputArity) {
         this(spec, frameLimit, sampleFields, sampleBasis, rDesc, compFactories, alg, outputArity,
                 new boolean[outputArity]);
     }
 
-    public AbstractSampleOperatorDescriptor(IOperatorDescriptorRegistry spec, int frameLimit, int[] sampleFields,
+    public AbstractHistogramOperatorDescriptor(IOperatorDescriptorRegistry spec, int frameLimit, int[] sampleFields,
             int sampleBasis, RecordDescriptor rDesc, IBinaryComparatorFactory[] compFactories, HistogramAlgorithm alg,
             int outputArity, boolean[] outputMaterializationFlags) {
         super(spec, 1, outputArity + 1);
@@ -113,10 +114,11 @@ public abstract class AbstractSampleOperatorDescriptor extends AbstractOperatorD
                 break;
             }
         }
-        if (null == alg)
+        if (alg == null)
             this.alg = HistogramAlgorithm.ORDERED_HISTOGRAM;
         else
             this.alg = alg;
+        LOGGER.info("Histograme type: " + this.alg);
     }
 
     @Override
@@ -162,7 +164,7 @@ public abstract class AbstractSampleOperatorDescriptor extends AbstractOperatorD
         public IOperatorNodePushable createPushRuntime(final IHyracksTaskContext ctx,
                 IRecordDescriptorProvider recordDescProvider, final int partition, int nPartitions)
                 throws HyracksDataException {
-            return new MaterializingSampleOperatorNodePushable(ctx, new TaskId(getActivityId(), partition),
+            return new LocalHistogramOperatorNodePushable(ctx, new TaskId(getActivityId(), partition),
                     sampleFields, sampleBasis, comparatorFactories, alg, inDesc, outDesc,
                     numberOfNonMaterializedOutputs, requiresMaterialization, partition);
         }
@@ -183,7 +185,7 @@ public abstract class AbstractSampleOperatorDescriptor extends AbstractOperatorD
             return new AbstractUnaryOutputSourceOperatorNodePushable() {
                 @Override
                 public void initialize() throws HyracksDataException {
-                    MaterializingSampleTaskState state = (MaterializingSampleTaskState) ctx.getStateObject(new TaskId(
+                    MaterializingHistogramTaskState state = (MaterializingHistogramTaskState) ctx.getStateObject(new TaskId(
                             new ActivityId(getOperatorId(), MATER_SAMPLER_ACTIVITY_ID), partition));
                     state.writeOut(writer, new VSizeFrame(ctx));
                 }
@@ -191,7 +193,7 @@ public abstract class AbstractSampleOperatorDescriptor extends AbstractOperatorD
                 @Override
                 public void deinitialize() throws HyracksDataException {
                     numberOfActiveMaterializeReaders--;
-                    MaterializingSampleTaskState state = (MaterializingSampleTaskState) ctx.getStateObject(new TaskId(
+                    MaterializingHistogramTaskState state = (MaterializingHistogramTaskState) ctx.getStateObject(new TaskId(
                             new ActivityId(getOperatorId(), MATER_SAMPLER_ACTIVITY_ID), partition));
                     if (numberOfActiveMaterializeReaders == 0)
                         state.deleteFile();
