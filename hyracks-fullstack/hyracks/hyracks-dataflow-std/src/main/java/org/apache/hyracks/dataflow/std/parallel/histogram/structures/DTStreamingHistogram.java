@@ -1050,14 +1050,13 @@ public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHis
     public void appendItem(E item, int count) throws HyracksDataException {
         double q = pointableToQuantile(item);
         LOGGER.info("Merge sequences: " + q + " <=> " + count);
-        if (bins.get(nusedbins - 1).x == q)
+        if (nusedbins > 0 && bins.get(nusedbins - 1).x == q)
             bins.get(nusedbins - 1).y += count;
         else {
             Coord newBin = new Coord();
             newBin.x = q;
             newBin.y = count;
             bins.add(newBin);
-            nusedbins++;
             if (++nusedbins > nbins)
                 trim();
         }

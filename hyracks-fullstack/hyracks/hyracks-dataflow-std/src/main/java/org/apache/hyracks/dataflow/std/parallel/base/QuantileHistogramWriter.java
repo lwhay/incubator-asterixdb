@@ -52,14 +52,13 @@ import org.apache.hyracks.dataflow.std.parallel.histogram.structures.DTStreaming
 public class QuantileHistogramWriter extends AbstractHistogramWriter {
     private static final Logger LOGGER = Logger.getLogger(QuantileHistogramWriter.class.getName());
 
-    protected static final boolean DEBUG = false;
+    protected static final boolean DEBUG = true;
     protected final IHistogram.HistogramType type;
     protected final int[] sampleFields;
     protected final int sampleBasis;
     protected final RecordDescriptor inDesc;
 
     protected static final int DEFAULT_ELASTIC = 10;
-    @SuppressWarnings("unused")
     protected static final double DEFAULT_MU = 0.2;
 
     protected FrameTupleReference tRef = null;
@@ -164,6 +163,11 @@ public class QuantileHistogramWriter extends AbstractHistogramWriter {
             /*for (int j = 0; j < sampleFields.length; j++) {*/
             histogram.addItem((AbstractPointable) getSampledField(tRef.getFieldData(sampleFields[0]),
                     tRef.getFieldStart(sampleFields[0])));
+            if (!partialOrLocal) {
+                IntegerPointable ip = (IntegerPointable) IntegerPointable.FACTORY.createPointable();
+                ip.set(tRef.getFieldData(tRef.getFieldCount() - 1), tRef.getFieldStart(tRef.getFieldCount() - 1),
+                        IntegerPointable.TYPE_TRAITS.getFixedLength());
+            }
             /*}*/
         }
     }
@@ -174,11 +178,11 @@ public class QuantileHistogramWriter extends AbstractHistogramWriter {
         appenderWrapper.fail();
     }
 
-    private void append() throws HyracksDataException {
+    private void append1() throws HyracksDataException {
         List<Entry<AbstractPointable, Integer>> pairs = histogram.generate(!partialOrLocal);
         int offset = 0;
         for (int i = 0; i < pairs.size(); i++) {
-            if (DEBUG || !partialOrLocal) {
+            if (DEBUG && !partialOrLocal) {
                 String quantile = "";
                 if (pairs.get(i).getKey() instanceof DoublePointable) {
                     quantile += ((DoublePointable) pairs.get(i).getKey()).getDouble() + " <-> "
@@ -190,13 +194,33 @@ public class QuantileHistogramWriter extends AbstractHistogramWriter {
             }
             Entry<AbstractPointable, Integer> entry = pairs.get(i);
             appenderWrapper.append(entry.getKey().getByteArray(), offset, entry.getKey().getLength());
+            //offset += entry.getKey().getLength();
             IntegerPointable count = (IntegerPointable) IntegerPointable.FACTORY.createPointable();
             byte[] buf = new byte[IntegerPointable.TYPE_TRAITS.getFixedLength()];
             count.set(buf, 0, IntegerPointable.TYPE_TRAITS.getFixedLength());
             count.setInteger(pairs.get(i).getValue());
             appenderWrapper.append(count.getByteArray(), offset, count.getLength());
+            //offset += count.getLength();
         }
         //appenderWrapper.write();
+    }
+
+    private void append() throws HyracksDataException {
+        List<Entry<AbstractPointable, Integer>> pairs = histogram.generate(!partialOrLocal);
+        for (int i = 0; i < pairs.size(); i++) {
+            tupleBuilder.reset();
+            Entry<AbstractPointable, Integer> entry = pairs.get(i);
+            tupleBuilder.addField(entry.getKey().getByteArray(), entry.getKey().getStartOffset(), entry.getKey()
+                    .getLength());
+            IntegerPointable count = (IntegerPointable) IntegerPointable.FACTORY.createPointable();
+            byte[] buf = new byte[IntegerPointable.TYPE_TRAITS.getFixedLength()];
+            count.set(buf, 0, IntegerPointable.TYPE_TRAITS.getFixedLength());
+            count.setInteger(pairs.get(i).getValue());
+            tupleBuilder.addField(count.getByteArray(), count.getStartOffset(), count.getLength());
+            appenderWrapper.appendSkipEmptyField(tupleBuilder.getFieldEndOffsets(), tupleBuilder.getByteArray(), 0,
+                    tupleBuilder.getSize());
+        }
+
     }
 
     @Override

@@ -19,6 +19,7 @@
 package org.apache.hyracks.dataflow.std.parallel.base;
 
 import java.nio.ByteBuffer;
+import java.util.logging.Logger;
 
 import org.apache.hyracks.api.comm.IFrameWriter;
 import org.apache.hyracks.api.context.IHyracksTaskContext;
@@ -26,12 +27,14 @@ import org.apache.hyracks.api.dataflow.value.IBinaryComparator;
 import org.apache.hyracks.api.dataflow.value.RecordDescriptor;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.data.std.api.AbstractPointable;
-import org.apache.hyracks.dataflow.std.parallel.histogram.structures.DTStreamingHistogram;
+import org.apache.hyracks.data.std.api.IPointable;
+import org.apache.hyracks.data.std.primitive.DoublePointable;
 
 /**
  * @author michael
  */
 public class MergeHistogramWriter extends QuantileHistogramWriter {
+    private static final Logger LOGGER = Logger.getLogger(MergeHistogramWriter.class.getName());
 
     /**
      * @param ctx
@@ -65,36 +68,53 @@ public class MergeHistogramWriter extends QuantileHistogramWriter {
             IBinaryComparator[] comparators, RecordDescriptor inRecordDesc, RecordDescriptor outRecordDesc,
             IFrameWriter writer) throws HyracksDataException {
         super(ctx, sampleFields, sampleBasis, comparators, inRecordDesc, outRecordDesc, writer);
-        // TODO Auto-generated constructor stub
     }
 
-    @Override
+    /*@Override
     public void open() throws HyracksDataException {
         super.open();
         switch (type) {
             case STREAMING_NUMERIC:
                 ((DTStreamingHistogram<AbstractPointable>) histogram).allocate(sampleBasis, DEFAULT_ELASTIC, false);
+                if (DEBUG)
+                    LOGGER.info("Merge histogram type: " + type);
                 break;
             case TERNARY_UTF8STRING:
                 break;
             default:
                 break;
         }
-    }
+    }*/
 
     @Override
     public void nextFrame(ByteBuffer buffer) throws HyracksDataException {
         inFrameAccessor.reset(buffer);
         int nTuples = inFrameAccessor.getTupleCount();
+        if (DEBUG)
+            LOGGER.info("**********************************" + nTuples);
         for (int i = 0; i < nTuples; i++) {
             tRef.reset(inFrameAccessor, i);
             // Currently, we support the one-dimensional histogram.
             // The numeric histogram can be supported by concatenating the homogeneous fields.
-            histogram.appendItem(
-                    (AbstractPointable) getSampledField(tRef.getFieldData(sampleFields[0]),
-                            tRef.getFieldStart(sampleFields[0])),
-                    getSampledCount(tRef.getFieldData(tRef.getFieldCount() - 1),
-                            tRef.getFieldStart(tRef.getFieldCount() - 1)));
+            IPointable qPointable = getSampledField(tRef.getFieldData(sampleFields[0]),
+                    tRef.getFieldStart(sampleFields[0]));
+            int count = getSampledCount(tRef.getFieldData(tRef.getFieldCount() - 1),
+                    tRef.getFieldStart(tRef.getFieldCount() - 1));
+            histogram.appendItem((AbstractPointable) qPointable, count);
+            if (DEBUG) {
+                String msg = "********************" + i + " out of " + nTuples + "*****************";
+                int fieldKey = tRef.getFieldStart(sampleFields[0]);
+                IPointable key = getSampledField(tRef.getFieldData(sampleFields[0]),
+                        tRef.getFieldStart(sampleFields[0]));
+                if (key instanceof DoublePointable) {
+                    msg += ((DoublePointable) key).doubleValue();
+                    msg += " <-> ";
+                    int fieldCount = tRef.getFieldCount() - 1;
+                    int fieldValue = tRef.getFieldStart(fieldCount);
+                    msg += getSampledCount(tRef.getFieldData(fieldCount), tRef.getFieldStart(fieldCount));
+                }
+                LOGGER.info(msg);
+            }
         }
     }
 }
