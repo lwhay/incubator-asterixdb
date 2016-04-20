@@ -58,7 +58,7 @@ public class QuantileHistogramWriter extends AbstractHistogramWriter {
     protected final int sampleBasis;
     protected final RecordDescriptor inDesc;
 
-    protected static final int DEFAULT_ELASTIC = 10;
+    protected static final int DEFAULT_ELASTIC = 4;
     protected static final double DEFAULT_MU = 0.2;
 
     protected FrameTupleReference tRef = null;

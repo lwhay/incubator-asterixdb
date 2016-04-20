@@ -37,7 +37,7 @@ import org.junit.Test;
 public class SamplerTest {
     private static final Logger LOGGER = Logger.getLogger(SamplerTest.class.getName());
 
-    private static final String filePath = "data/skew/zipfan.tbl";
+    private static final String filePath = "data/skew/zipfan1.tbl";
 
     private final static int ZIPFAN_COLUMN = 0;
 

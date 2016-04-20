@@ -49,9 +49,10 @@ public class SampleAlgorithmTests extends TestCase {
     private final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
     private final ByteArrayOutputStream errContent = new ByteArrayOutputStream();
     private final static int ZIPFAN_COLUMN = 0;
-    private/*final static*/int PARTITION_CARD = 7;
+    private final static int PARTITION_CARD = 20;
+    private final static int PARTITION_SCALE = 8;
 
-    private final static String zipFanFilePath = "data/skew/zipfan.tbl";
+    private final static String zipFanFilePath = "data/skew/zipfan1.tbl";
 
     @Before
     public void setUpStreams() {
@@ -99,7 +100,7 @@ public class SampleAlgorithmTests extends TestCase {
         DTStreamingHistogram<DoublePointable> dth = new DTStreamingHistogram<DoublePointable>(
                 IHistogram.FieldType.DOUBLE, true);
         dth.initialize();
-        dth.allocate(PARTITION_CARD, 16, true);
+        dth.allocate(PARTITION_CARD, PARTITION_SCALE, true);
         Map<Integer, DoublePointable> randString = new HashMap<Integer, DoublePointable>();
         BufferedReader br = new BufferedReader(new FileReader(zipFanFilePath));
         String line = null;
@@ -113,7 +114,7 @@ public class SampleAlgorithmTests extends TestCase {
             key.setDouble(d);
             randString.put((int) (Math.random() * 1000000000), key);
         }
-        randString = sortByKey(randString);
+        //randString = sortByKey(randString);
 
         long begin = System.currentTimeMillis();
         for (Entry<Integer, DoublePointable> entry : randString.entrySet())

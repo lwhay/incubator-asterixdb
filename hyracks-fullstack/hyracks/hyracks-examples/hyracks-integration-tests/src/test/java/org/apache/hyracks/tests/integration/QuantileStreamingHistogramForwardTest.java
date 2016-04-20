@@ -3,9 +3,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * you may obtain a copy of the License from
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,12 +30,10 @@ import org.apache.hyracks.data.std.accessors.PointableBinaryComparatorFactory;
 import org.apache.hyracks.data.std.primitive.DoublePointable;
 import org.apache.hyracks.dataflow.common.data.marshalling.DoubleSerializerDeserializer;
 import org.apache.hyracks.dataflow.common.data.marshalling.IntegerSerializerDeserializer;
-import org.apache.hyracks.dataflow.common.data.marshalling.UTF8StringSerializerDeserializer;
 import org.apache.hyracks.dataflow.common.data.normalizers.DoubleNormalizedKeyComputerFactory;
 import org.apache.hyracks.dataflow.common.data.parsers.DoubleParserFactory;
 import org.apache.hyracks.dataflow.common.data.parsers.IValueParserFactory;
 import org.apache.hyracks.dataflow.common.data.parsers.IntegerParserFactory;
-import org.apache.hyracks.dataflow.common.data.parsers.UTF8StringParserFactory;
 import org.apache.hyracks.dataflow.common.data.partition.range.FieldRangePartitionComputerFactory;
 import org.apache.hyracks.dataflow.std.connectors.MToNPartitioningConnectorDescriptor;
 import org.apache.hyracks.dataflow.std.connectors.MToNPartitioningMergingConnectorDescriptor;
@@ -63,10 +61,10 @@ import org.junit.Test;
  * @author michael
  */
 public class QuantileStreamingHistogramForwardTest extends AbstractIntegrationTest {
-    private static final int rangeMergeArity = 1;
     private static final int outputFiles = 2;
     private static int[] sampleFields = new int[] { 5 };
     private static int[] normalFields = new int[] { 0 };
+    private static int[] zipfanFields = new int[] { 0 };
     private IBinaryComparatorFactory[] sampleCmpFactories = new IBinaryComparatorFactory[] { PointableBinaryComparatorFactory
             .of(DoublePointable.FACTORY) };
     private INormalizedKeyComputerFactory sampleKeyFactories = new DoubleNormalizedKeyComputerFactory();
@@ -74,6 +72,77 @@ public class QuantileStreamingHistogramForwardTest extends AbstractIntegrationTe
             new IFieldAggregateDescriptorFactory[] { new IntSumFieldAggregatorFactory(1, true) });
 
     @Test
+    public void byPassZipfanHistogramSort() throws Exception {
+        JobSpecification spec = new JobSpecification();
+        File[] outputFile = new File[outputFiles];
+        for (int i = 0; i < outputFiles; i++) {
+            outputFile[i] = File.createTempFile("output-" + i + "-", null, new File("data"));
+        }
+        FileSplit[] custSplits = new FileSplit[] {
+                new FileSplit(NC1_ID, new FileReference(new File("data/skew/zipfan1.tbl"))),
+                new FileSplit(NC2_ID, new FileReference(new File("data/skew/zipfan2.tbl"))) };
+        IFileSplitProvider custSplitsProvider = new ConstantFileSplitProvider(custSplits);
+        RecordDescriptor custDesc = new RecordDescriptor(new ISerializerDeserializer[] {
+                DoubleSerializerDeserializer.INSTANCE, IntegerSerializerDeserializer.INSTANCE });
+
+        FileScanOperatorDescriptor custScanner = new FileScanOperatorDescriptor(spec, custSplitsProvider,
+                new DelimitedDataTupleParserFactory(new IValueParserFactory[] { DoubleParserFactory.INSTANCE,
+                        IntegerParserFactory.INSTANCE }, '\t'), custDesc);
+        PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, custScanner, NC1_ID, NC2_ID);
+
+        // partialOrLocal: true denotes the local generation.
+        AbstractHistogramOperatorDescriptor materSampleCust = new LocalHistogramOperatorDescriptor(spec, 4,
+                zipfanFields, 2, custDesc, sampleCmpFactories, HistogramAlgorithm.UNIFORM_HISTOGRAM, 1,
+                new boolean[] { true });
+        PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, materSampleCust, NC1_ID, NC2_ID);
+        spec.connect(new OneToOneConnectorDescriptor(spec), custScanner, 0, materSampleCust, 0);
+
+        RecordDescriptor outputSamp = new RecordDescriptor(new ISerializerDeserializer[] {
+                DoubleSerializerDeserializer.INSTANCE, IntegerSerializerDeserializer.INSTANCE });
+
+        ITuplePartitionComputerFactory tpcf = new FieldRangePartitionComputerFactory(normalFields, sampleCmpFactories,
+                null);
+
+        // partialOrLocal: false denotes the global merge.
+        IOperatorDescriptor mergeSampleCust = new MergeHistogramOperatorDescriptor(spec, 4, normalFields, outputSamp,
+                4, sampleKeyFactories, sampleCmpFactories, HistogramAlgorithm.UNIFORM_HISTOGRAM, false);
+        PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, mergeSampleCust, NC1_ID);
+
+        spec.connect(new MToNPartitioningMergingConnectorDescriptor(spec, tpcf, normalFields, sampleCmpFactories,
+                sampleKeyFactories, false), materSampleCust, 0, mergeSampleCust, 0);
+
+        ITuplePartitionComputerFactory tpc = new FieldRangePartitionDelayComputerFactory(zipfanFields,
+                sampleCmpFactories);
+
+        RecordDescriptor outputRec = custDesc;
+        IOperatorDescriptor forward = new ForwardOperatorDescriptor(spec, 4, normalFields, outputSamp, outputRec,
+                sampleCmpFactories);
+        PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, forward, NC1_ID, NC2_ID);
+        spec.connect(new MToNReplicatingConnectorDescriptor(spec), mergeSampleCust, 0, forward, 0);
+        spec.connect(new OneToOneConnectorDescriptor(spec), materSampleCust, 1, forward, 1);
+
+        ExternalSortOperatorDescriptor sorterCust = new ExternalSortOperatorDescriptor(spec, 4, zipfanFields,
+                sampleCmpFactories, custDesc);
+        PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, sorterCust, NC1_ID, NC2_ID);
+        spec.connect(new MToNPartitioningConnectorDescriptor(spec, tpc), forward, 0, sorterCust, 0);
+
+        ResultSetId rsId = new ResultSetId(1);
+        spec.addResultSetId(rsId);
+
+        FileSplit[] files = new FileSplit[outputFiles];
+        for (int i = 0; i < outputFiles; i++) {
+            files[i] = new FileSplit((0 == i % 2) ? NC1_ID : NC2_ID, new FileReference(outputFile[i]));
+        }
+
+        IOperatorDescriptor printer = new LineFileWriteOperatorDescriptor(spec, files);
+        PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, printer, NC1_ID, NC2_ID);
+        spec.connect(new OneToOneConnectorDescriptor(spec), sorterCust, 0, printer, 0);
+
+        spec.addRoot(printer);
+        runTest(spec);
+    }
+
+    /*@Test
     public void byPassHistogramSort() throws Exception {
         JobSpecification spec = new JobSpecification();
         File[] outputFile = new File[outputFiles];
@@ -107,15 +176,6 @@ public class QuantileStreamingHistogramForwardTest extends AbstractIntegrationTe
         RecordDescriptor outputSamp = new RecordDescriptor(new ISerializerDeserializer[] {
                 DoubleSerializerDeserializer.INSTANCE, IntegerSerializerDeserializer.INSTANCE });
 
-        /*byte[] byteRange = new byte[rangeMergeArity];
-        int[] offRange = new int[rangeMergeArity];
-        for (int i = 0; i < rangeMergeArity; i++) {
-            byteRange[i] = Byte.parseByte(String.valueOf(i * (150 / rangeMergeArity + 1)));
-            offRange[i] = i;
-        }
-
-        IRangeMap rangeMap = new RangeMap(normalFields.length, byteRange, offRange);*/
-
         ITuplePartitionComputerFactory tpcf = new FieldRangePartitionComputerFactory(normalFields, sampleCmpFactories,
                 null);
 
@@ -123,9 +183,6 @@ public class QuantileStreamingHistogramForwardTest extends AbstractIntegrationTe
         IOperatorDescriptor mergeSampleCust = new MergeHistogramOperatorDescriptor(spec, 4, normalFields, outputSamp,
                 4, sampleKeyFactories, sampleCmpFactories, HistogramAlgorithm.UNIFORM_HISTOGRAM, false);
         PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, mergeSampleCust, NC1_ID);
-
-        /*ITuplePartitionComputerFactory tpcf = new FieldHashPartitionComputerFactory(normalFields,
-                new IBinaryHashFunctionFactory[] { PointableBinaryHashFunctionFactory.of(DoublePointable.FACTORY) });*/
 
         spec.connect(new MToNPartitioningMergingConnectorDescriptor(spec, tpcf, normalFields, sampleCmpFactories,
                 sampleKeyFactories, false), materSampleCust, 0, mergeSampleCust, 0);
@@ -159,5 +216,5 @@ public class QuantileStreamingHistogramForwardTest extends AbstractIntegrationTe
 
         spec.addRoot(printer);
         runTest(spec);
-    }
+    }*/
 }

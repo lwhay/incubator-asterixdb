@@ -730,13 +730,35 @@ public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHis
         return point;
     }
 
+    double leftXtmp;
+    double leftYtmp;
+    double rightXtmp;
+    double rightYtmp;
+    double eclipsedtmp;
+    double wantedtmp;
+    double localXtmp;
+    double localYtmp;
+    double pointXtmp;
+    double pointYtmp;
     private double[] accumulate(double want, double leftX, double leftY, double rightX, double rightY, double localX,
             double elipsed) {
+        leftXtmp = leftX;
+        leftYtmp = leftY;
+        rightXtmp = rightX;
+        rightYtmp = rightY;
+        localXtmp = localX;
+        eclipsedtmp = elipsed;
+        wantedtmp = want;
+
         double localY = leftY + (rightY - leftY) * (localX - leftX) / (rightX - leftX);
+        localYtmp = localY;
         double pointY = Math.sqrt(localY * localY + 2 * want * (rightY - leftY));
+        pointYtmp = pointY;
         double pointX = localX + 2 * (rightX - leftX) / (pointY + localY) * want;
+        pointXtmp = pointX;
         double point[] = new double[2];
         point[0] = pointX;
+        pointXtmp = pointX;
         point[1] = /*pointY*/want;
         return point;
     }
@@ -823,11 +845,20 @@ public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHis
                                 break;
                             if ((double) (cacheBins.get(current).y + cacheBins.get(current + 1).y) / 2 - elipsed > expection
                                     - accd) {
+                                cacheCLeft.x = cacheBins.get(current).x;
+                                cacheCLeft.y = cacheBins.get(current).y;
+                                cacheCRight.x = cacheBins.get(current + 1).x;
+                                cacheCRight.y = cacheBins.get(current + 1).y;
+                                cacheC = current;
                                 double[] quan = accumulate(expection - accd, cacheBins.get(current).x,
                                         cacheBins.get(current).y, cacheBins.get(current + 1).x,
                                         cacheBins.get(current + 1).y, localX, elipsed);
                                 cur.x = quan[0];
                                 cur.y = (int) expection;
+                                cacheR[0] = expection;
+                                cacheR[1] = accd;
+                                cacheCLeft.x = cur.x;
+                                cacheCLeft.y = cur.y;
                                 localX = quan[0];
                                 elipsed += quan[1];
                                 ret.add(new Quantile<E, Integer>(quantileToPointable(cur.x), cur.y));
@@ -838,7 +869,7 @@ public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHis
                                 ret.add(new Quantile<E, Integer>(quantileToPointable(cacheBins.get(current + 1).x),
                                         (int) expection));
                                 current++;
-                                localX = bins.get(current).x;
+                                localX = cacheBins.get(current).x;
                                 elipsed = .0;
                                 accd = 0;
                                 break;
@@ -846,7 +877,7 @@ public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHis
                                 accd += (double) (cacheBins.get(current).y + cacheBins.get(current + 1).y) / 2
                                         - elipsed;
                                 current++;
-                                localX = bins.get(current).x;
+                                localX = cacheBins.get(current).x;
                                 elipsed = .0;
                             }
                         }
@@ -887,6 +918,11 @@ public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHis
         }
         return ret;
     }
+
+    int cacheC = 0;
+    Coord cacheCLeft = new Coord();
+    Coord cacheCRight = new Coord();
+    double[] cacheR = new double[2];
 
     @Override
     public void countItem(E item) throws HyracksDataException {

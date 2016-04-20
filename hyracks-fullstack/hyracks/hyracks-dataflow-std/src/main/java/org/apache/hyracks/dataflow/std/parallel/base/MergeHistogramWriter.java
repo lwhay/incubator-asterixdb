@@ -70,22 +70,6 @@ public class MergeHistogramWriter extends QuantileHistogramWriter {
         super(ctx, sampleFields, sampleBasis, comparators, inRecordDesc, outRecordDesc, writer);
     }
 
-    /*@Override
-    public void open() throws HyracksDataException {
-        super.open();
-        switch (type) {
-            case STREAMING_NUMERIC:
-                ((DTStreamingHistogram<AbstractPointable>) histogram).allocate(sampleBasis, DEFAULT_ELASTIC, false);
-                if (DEBUG)
-                    LOGGER.info("Merge histogram type: " + type);
-                break;
-            case TERNARY_UTF8STRING:
-                break;
-            default:
-                break;
-        }
-    }*/
-
     @Override
     public void nextFrame(ByteBuffer buffer) throws HyracksDataException {
         inFrameAccessor.reset(buffer);
@@ -104,14 +88,13 @@ public class MergeHistogramWriter extends QuantileHistogramWriter {
             if (DEBUG) {
                 String msg = "********************" + i + " out of " + nTuples + "*****************";
                 int fieldKey = tRef.getFieldStart(sampleFields[0]);
-                IPointable key = getSampledField(tRef.getFieldData(sampleFields[0]),
-                        tRef.getFieldStart(sampleFields[0]));
+                IPointable key = getSampledField(tRef.getFieldData(sampleFields[0]), fieldKey);
                 if (key instanceof DoublePointable) {
                     msg += ((DoublePointable) key).doubleValue();
                     msg += " <-> ";
                     int fieldCount = tRef.getFieldCount() - 1;
                     int fieldValue = tRef.getFieldStart(fieldCount);
-                    msg += getSampledCount(tRef.getFieldData(fieldCount), tRef.getFieldStart(fieldCount));
+                    msg += getSampledCount(tRef.getFieldData(fieldCount), fieldValue);
                 }
                 LOGGER.info(msg);
             }
