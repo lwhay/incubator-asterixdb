@@ -730,36 +730,14 @@ public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHis
         return point;
     }
 
-    double leftXtmp;
-    double leftYtmp;
-    double rightXtmp;
-    double rightYtmp;
-    double eclipsedtmp;
-    double wantedtmp;
-    double localXtmp;
-    double localYtmp;
-    double pointXtmp;
-    double pointYtmp;
     private double[] accumulate(double want, double leftX, double leftY, double rightX, double rightY, double localX,
             double elipsed) {
-        leftXtmp = leftX;
-        leftYtmp = leftY;
-        rightXtmp = rightX;
-        rightYtmp = rightY;
-        localXtmp = localX;
-        eclipsedtmp = elipsed;
-        wantedtmp = want;
-
         double localY = leftY + (rightY - leftY) * (localX - leftX) / (rightX - leftX);
-        localYtmp = localY;
         double pointY = Math.sqrt(localY * localY + 2 * want * (rightY - leftY));
-        pointYtmp = pointY;
         double pointX = localX + 2 * (rightX - leftX) / (pointY + localY) * want;
-        pointXtmp = pointX;
         double point[] = new double[2];
         point[0] = pointX;
-        pointXtmp = pointX;
-        point[1] = /*pointY*/want;
+        point[1] = want;
         return point;
     }
 
@@ -845,20 +823,11 @@ public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHis
                                 break;
                             if ((double) (cacheBins.get(current).y + cacheBins.get(current + 1).y) / 2 - elipsed > expection
                                     - accd) {
-                                cacheCLeft.x = cacheBins.get(current).x;
-                                cacheCLeft.y = cacheBins.get(current).y;
-                                cacheCRight.x = cacheBins.get(current + 1).x;
-                                cacheCRight.y = cacheBins.get(current + 1).y;
-                                cacheC = current;
                                 double[] quan = accumulate(expection - accd, cacheBins.get(current).x,
                                         cacheBins.get(current).y, cacheBins.get(current + 1).x,
                                         cacheBins.get(current + 1).y, localX, elipsed);
                                 cur.x = quan[0];
                                 cur.y = (int) expection;
-                                cacheR[0] = expection;
-                                cacheR[1] = accd;
-                                cacheCLeft.x = cur.x;
-                                cacheCLeft.y = cur.y;
                                 localX = quan[0];
                                 elipsed += quan[1];
                                 ret.add(new Quantile<E, Integer>(quantileToPointable(cur.x), cur.y));
@@ -918,11 +887,6 @@ public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHis
         }
         return ret;
     }
-
-    int cacheC = 0;
-    Coord cacheCLeft = new Coord();
-    Coord cacheCRight = new Coord();
-    double[] cacheR = new double[2];
 
     @Override
     public void countItem(E item) throws HyracksDataException {
@@ -994,9 +958,6 @@ public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHis
                     rightExt.y = (int) rightVirtual[1];
                     bins.add(rightExt);
 
-                    /*for (int i = 0; i < bins.size(); i++)
-                        LOGGER.info("<" + bins.get(i).x + ", " + bins.get(i).y + ">");*/
-
                     int nParts = nusedbins / QUANTILE_SCALE;
                     double expection = (double) total / nParts;
                     /*LOGGER.info("Total: " + total + " avg: " + expection + " parts: " + nParts);*/
@@ -1019,15 +980,12 @@ public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHis
                                 localX = quan[0];
                                 elipsed += quan[1];
                                 gBins.add(cur);
-                                /*LOGGER.info("x: " + cur.x + " y: " + cur.y);*/
                                 accd = 0;
                                 break;
                             } else if ((double) (bins.get(current).y + bins.get(current + 1).y) / 2 - elipsed == expection
                                     - accd) {
                                 gBins.add(bins.get(current + 1));
                                 gBins.get(gBins.size() - 1).y = (int) expection;
-                                /*LOGGER.info("*x: " + gBins.get(gBins.size() - 1).x + " y: "
-                                        + gBins.get(gBins.size() - 1).y);*/
                                 current++;
                                 localX = bins.get(current).x;
                                 elipsed = .0;
@@ -1041,8 +999,6 @@ public class DTStreamingHistogram<E extends AbstractPointable> implements IDTHis
                             }
                         }
                     }
-                    /*for (int i = 0; i < bins.size(); i++)
-                        LOGGER.info("<" + bins.get(i).x + ", " + bins.get(i).y + ">");*/
                     gBins.add(new Coord());
                     gBins.get(gBins.size() - 1).x = Double.MAX_VALUE;
                     gBins.get(gBins.size() - 1).y = (int) expection;
