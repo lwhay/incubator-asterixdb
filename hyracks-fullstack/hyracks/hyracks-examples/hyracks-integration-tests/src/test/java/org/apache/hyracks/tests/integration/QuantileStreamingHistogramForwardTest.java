@@ -30,10 +30,12 @@ import org.apache.hyracks.data.std.accessors.PointableBinaryComparatorFactory;
 import org.apache.hyracks.data.std.primitive.DoublePointable;
 import org.apache.hyracks.dataflow.common.data.marshalling.DoubleSerializerDeserializer;
 import org.apache.hyracks.dataflow.common.data.marshalling.IntegerSerializerDeserializer;
+import org.apache.hyracks.dataflow.common.data.marshalling.UTF8StringSerializerDeserializer;
 import org.apache.hyracks.dataflow.common.data.normalizers.DoubleNormalizedKeyComputerFactory;
 import org.apache.hyracks.dataflow.common.data.parsers.DoubleParserFactory;
 import org.apache.hyracks.dataflow.common.data.parsers.IValueParserFactory;
 import org.apache.hyracks.dataflow.common.data.parsers.IntegerParserFactory;
+import org.apache.hyracks.dataflow.common.data.parsers.UTF8StringParserFactory;
 import org.apache.hyracks.dataflow.common.data.partition.range.FieldRangePartitionComputerFactory;
 import org.apache.hyracks.dataflow.std.connectors.MToNPartitioningConnectorDescriptor;
 import org.apache.hyracks.dataflow.std.connectors.MToNPartitioningMergingConnectorDescriptor;
@@ -142,7 +144,7 @@ public class QuantileStreamingHistogramForwardTest extends AbstractIntegrationTe
         runTest(spec);
     }
 
-    /*@Test
+    @Test
     public void byPassHistogramSort() throws Exception {
         JobSpecification spec = new JobSpecification();
         File[] outputFile = new File[outputFiles];
@@ -216,5 +218,5 @@ public class QuantileStreamingHistogramForwardTest extends AbstractIntegrationTe
 
         spec.addRoot(printer);
         runTest(spec);
-    }*/
+    }
 }
